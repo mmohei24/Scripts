@@ -1,5 +1,5 @@
 # Use Node.js as base image
-FROM node:14 AS builder
+FROM node:20 AS builder
 
 # Set the working directory in the container
 WORKDIR /app
@@ -17,7 +17,7 @@ COPY . .
 RUN npm run build --prod
 
 # Stage 2: Use Node.js as base image to serve the Angular app
-FROM node:14
+FROM node:20
 
 # Set the working directory in the container
 WORKDIR /app
