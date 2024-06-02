@@ -1,0 +1,16 @@
+FROM node:18.20.3-alpine as builder
+WORKDIR /usr/src/app
+COPY package*.json ./
+RUN npm install
+COPY . .
+RUN npm install -g @angular/cli
+RUN ng build
+COPY . .
+# Stage 2: Create the final nginx stage
+FROM nginx:stable
+COPY --from=builder usr/src/app/dist/crmproject/browser  /usr/share/nginx/html
+COPY default.conf /etc/nginx/conf.d
+# Expose the port on which NGINX listens (optional)
+EXPOSE 80
+# The CMD in the final stage should be nginx, not npm
+CMD ["nginx", "-g", "daemon off;"]
