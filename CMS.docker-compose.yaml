@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: ./CMS_Backend
+      dockerfile: Dockerfile
+    ports:
+      - "5083:5083"
+    depends_on:
+      - db
+    environment:
+      DB_PASSWORD: ${DB_PASSWORD}
+
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      SA_PASSWORD: ${DB_SA_PASSWORD}
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: "Express"
+    ports:
+      - "1433:1433"
+    volumes:
+      - db-data:/var/opt/mssql
+    networks:
+      - backend-network
+
+  frontend:
+    build:
+      context: ./CMS_Frontend
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    networks:
+      - backend-network
+
+networks:
+  backend-network:
+
+volumes:
+  db-data:
