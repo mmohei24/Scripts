@@ -1,0 +1,86 @@
+pipeline {
+    agent any
+    environment {
+        ANGULAR_CLI_VERSION = '18.0.2'
+        NODEJS_VERSION = '20.1.0'
+        NPM_VERSION = '9.6.4'
+        BUILD_DIR = 'dist' // Angular default output directory
+        GIT_BRANCH = 'stagging' // Specify the branch to checkout
+        GIT_CREDENTIALS_ID = 'github' // Change this to your GitHub credentials ID in Jenkins
+        DOCKER_IMAGE = "abdelrahman9655/cms-front"
+        DOCKERHUB_CREDENTIALS_ID = 'dockerhub-cred'
+    }
+    stages {
+        stage('Checkout') {
+            steps {
+                 echo "Checkouting...."  
+                // Checkout the Angular project from Git
+                 git branch: 'stagging', credentialsId: env.GIT_CREDENTIALS_ID, url: 'https://github.com/Spatium-Software/CMS_Frontend.git'
+                echo "End Checkouting"
+            }
+        }
+        stage('Setup') {
+            steps {
+                // Install Node.js and npm
+                script {
+                    // tool name: 'NodeJS', type: 'org.jenkinsci.plugins.nodejs.tools.NodeJSInstallation'
+                    env.PATH = "${tool 'NodeJS'}/bin:${env.PATH}"
+                }
+                // Install Angular CLI
+                sh "npm install -g @angular/cli@${ANGULAR_CLI_VERSION}"
+            }
+        }
+        stage('Build') {
+            steps {
+                echo "Run npm install to install all Dependencies"
+                // Install project dependencies
+                sh 'npm install'
+                echo " Finish install Dependencies"
+                // Build Angular project
+                echo "Start Building stage"
+                sh "ng build "
+                echo "Finish Building stage"
+            }
+        }
+                stage('Build Docker Image') {
+            steps {
+                echo "Building Docker image..."
+                sh "docker build -t ${env.DOCKER_IMAGE}:${env.BUILD_NUMBER} ."
+                echo "Docker image built"
+            }
+        }
+        
+        stage('Login to DockerHub') {
+            steps {
+                echo "Logging into DockerHub..."
+                withCredentials([usernamePassword(credentialsId: env.DOCKERHUB_CREDENTIALS_ID, usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
+                  sh 'echo $PASSWORD | docker login -u $USERNAME --password-stdin'
+                }
+                echo "Logged into DockerHub"
+            }
+        }
+        
+        stage('Push Docker Image') {
+            steps {
+                echo "Pushing Docker image..."
+                sh "docker push ${env.DOCKER_IMAGE}:${env.BUILD_NUMBER}"
+                echo "Docker image pushed"
+            }
+        }
+        
+        stage('Delete Local Docker Image') {
+            steps {
+                echo "Deleting local Docker image..."
+                sh "docker rmi ${env.DOCKER_IMAGE}:${env.BUILD_NUMBER}"
+                echo "Local Docker image deleted"
+            }
+        }
+    }
+    post {
+        always {
+            echo "Logging out of DockerHub..."
+            sh 'docker logout'
+            echo "Logged out of DockerHub"
+        }
+    }
+}
